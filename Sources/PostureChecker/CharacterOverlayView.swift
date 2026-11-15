@@ -1,15 +1,18 @@
 import SwiftUI
 
-/// Placeholder character. Swap the shape/art once design is settled —
-/// the walk-on/walk-off/yell state machine below is what matters for now.
+/// Lives in the full-screen click-through overlay window. Anchored to the
+/// top-right corner — walks in from off the right edge, walks back out the
+/// same way. Placeholder emoji character; swap for the real pixel-art sprite
+/// once art is ready (see CharacterCatalog).
 struct CharacterOverlayView: View {
     let state: PostureState
 
-    @State private var xOffset: CGFloat = 300
+    @AppStorage("selectedCharacterID") private var selectedCharacterID = CharacterCatalog.defaultID
+    @State private var xOffset: CGFloat = 160
     @State private var flashRed = false
 
     var body: some View {
-        ZStack {
+        ZStack(alignment: .topTrailing) {
             if flashRed {
                 Color.red.opacity(0.25)
                     .ignoresSafeArea()
@@ -19,16 +22,20 @@ struct CharacterOverlayView: View {
                 if case .alert = state {
                     Text("sit up!")
                         .font(.caption.bold())
-                        .padding(6)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
                         .background(.black.opacity(0.75), in: Capsule())
                         .foregroundStyle(.white)
                 }
-                Text("🙂")
+                Text(CharacterCatalog.option(for: selectedCharacterID).preview)
                     .font(.system(size: 64))
                     .scaleEffect(isAlert ? 1.15 : 1.0)
             }
+            .padding(.top, 36)
+            .padding(.trailing, 36)
             .offset(x: xOffset)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
         .onChange(of: state) { newState in
             update(for: newState)
         }
@@ -46,12 +53,12 @@ struct CharacterOverlayView: View {
         switch state {
         case .good:
             withAnimation(.easeInOut(duration: 0.6)) {
-                xOffset = 300 // walks off-screen
+                xOffset = 160 // walks off-screen, past the right edge
             }
             flashRed = false
         case .slouching:
             withAnimation(.easeOut(duration: 0.6)) {
-                xOffset = 0 // walks on-screen
+                xOffset = 0 // walks on-screen, resting near the corner
             }
             flashRed = false
         case .alert:

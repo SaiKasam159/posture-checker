@@ -22,6 +22,13 @@ final class OverlayWindowController: NSWindowController {
         window.level = .statusBar
         window.ignoresMouseEvents = true
         window.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle]
+
+        // NSHostingView sizes to its content's ideal size by default, which
+        // left it collapsed in AppKit's origin corner (bottom-left) instead
+        // of covering the screen. Pin it to the window's full content frame
+        // and let it track future resizes.
+        contentView.frame = window.contentLayoutRect
+        contentView.autoresizingMask = [.width, .height]
         window.contentView = contentView
 
         self.init(window: window)

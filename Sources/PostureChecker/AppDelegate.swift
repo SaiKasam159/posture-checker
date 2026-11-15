@@ -6,8 +6,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem?
     private var popover: NSPopover?
     private var overlayController: OverlayWindowController?
+    private var onboardingController: OnboardingWindowController?
     private var postureSource = MockPostureSource()
     private var cancellable: AnyCancellable?
+
+    private let hasCompletedOnboardingKey = "hasCompletedOnboarding"
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory) // no Dock icon, menu bar only
@@ -15,6 +18,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         setUpStatusItem()
         setUpOverlay()
         postureSource.start()
+
+        if !UserDefaults.standard.bool(forKey: hasCompletedOnboardingKey) {
+            showOnboarding()
+        }
+    }
+
+    private func showOnboarding() {
+        let controller = OnboardingWindowController { [weak self] in
+            UserDefaults.standard.set(true, forKey: self?.hasCompletedOnboardingKey ?? "hasCompletedOnboarding")
+            self?.onboardingController?.close()
+            self?.onboardingController = nil
+        }
+        controller.show()
+        onboardingController = controller
     }
 
     private func setUpStatusItem() {
@@ -26,7 +43,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let popover = NSPopover()
         popover.behavior = .transient
-        popover.contentViewController = NSHostingController(rootView: SettingsView())
+        popover.contentViewController = NSHostingController(
+            rootView: SettingsView(onShowOnboarding: { [weak self] in self?.showOnboarding() })
+        )
         self.popover = popover
     }
 

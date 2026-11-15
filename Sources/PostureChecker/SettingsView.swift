@@ -5,8 +5,10 @@ struct SettingsView: View {
     @State private var sensitivity: Double = 10
     @State private var isPaused = false
     @State private var cameraAuthorized = false
+    @AppStorage("selectedCharacterID") private var selectedCharacterID = CharacterCatalog.defaultID
 
     let cameras = ["Built-in Camera", "External Monitor Camera"]
+    var onShowOnboarding: () -> Void = {}
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -50,11 +52,26 @@ struct SettingsView: View {
             }
 
             Toggle("Pause monitoring", isOn: $isPaused)
+                .help("Temporarily stops watching without quitting the app.")
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Character")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                CharacterPickerView(selectedID: $selectedCharacterID)
+            }
 
             Divider()
 
             Button("Recalibrate") {
                 // Hook up to backend calibration routine once available.
+            }
+            .help("Resets your \"good posture\" baseline to how you're sitting right now.")
+
+            Button("Show Welcome Guide Again") {
+                onShowOnboarding()
             }
 
             Divider()
@@ -65,7 +82,7 @@ struct SettingsView: View {
             .foregroundStyle(.red)
         }
         .padding(16)
-        .frame(width: 280)
+        .frame(width: 300)
         .onAppear {
             CameraPermission.request { granted in
                 cameraAuthorized = granted
