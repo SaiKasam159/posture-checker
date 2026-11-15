@@ -9,15 +9,9 @@ struct CharacterOverlayView: View {
 
     @AppStorage("selectedCharacterID") private var selectedCharacterID = CharacterCatalog.defaultID
     @State private var xOffset: CGFloat = 160
-    @State private var flashRed = false
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
-            if flashRed {
-                Color.red.opacity(0.25)
-                    .ignoresSafeArea()
-            }
-
             VStack(spacing: 6) {
                 if case .alert = state {
                     Text(CharacterCatalog.option(for: selectedCharacterID).quote)
@@ -58,17 +52,14 @@ struct CharacterOverlayView: View {
             withAnimation(.easeInOut(duration: 0.6)) {
                 xOffset = 160 // walks off-screen, past the right edge
             }
-            flashRed = false
         case .slouching:
             withAnimation(.easeOut(duration: 0.6)) {
                 xOffset = 0 // walks on-screen, resting near the corner
             }
-            flashRed = false
         case .alert:
             withAnimation(.easeOut(duration: 0.3)) {
                 xOffset = 0
             }
-            flashRed = true
         }
     }
 }
