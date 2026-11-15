@@ -5,10 +5,18 @@ import SwiftUI
 /// a character before the app settles into the menu bar.
 struct OnboardingView: View {
     @AppStorage("selectedCharacterID") private var selectedCharacterID = CharacterCatalog.defaultID
-    @State private var page = 0
+    @State private var page: Int
     let onFinish: () -> Void
+    var finalButtonLabel: String = "GET STARTED"
 
+    static let characterPageIndex = 4
     private let pageCount = 5
+
+    init(startPage: Int = 0, finalButtonLabel: String = "GET STARTED", onFinish: @escaping () -> Void) {
+        self._page = State(initialValue: startPage)
+        self.finalButtonLabel = finalButtonLabel
+        self.onFinish = onFinish
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -32,7 +40,7 @@ struct OnboardingView: View {
                         .buttonStyle(PixelButtonStyle(fill: Theme.surface, textColor: Theme.textPrimary))
                 }
                 Spacer()
-                Button(page == pageCount - 1 ? "GET STARTED" : "NEXT") {
+                Button(page == pageCount - 1 ? finalButtonLabel : "NEXT") {
                     if page == pageCount - 1 {
                         onFinish()
                     } else {

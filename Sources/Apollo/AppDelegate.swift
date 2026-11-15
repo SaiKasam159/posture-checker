@@ -26,9 +26,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    /// Full onboarding from the start. Used on first launch and from
+    /// settings' "Show Onboarding Again."
     private func showOnboarding() {
-        let controller = OnboardingWindowController { [weak self] in
+        let isReplay = UserDefaults.standard.bool(forKey: hasCompletedOnboardingKey)
+        let controller = OnboardingWindowController(
+            startPage: 0,
+            finalButtonLabel: isReplay ? "DONE" : "GET STARTED"
+        ) { [weak self] in
             UserDefaults.standard.set(true, forKey: self?.hasCompletedOnboardingKey ?? "hasCompletedOnboarding")
+            self?.onboardingController?.close()
+            self?.onboardingController = nil
+        }
+        controller.show()
+        onboardingController = controller
+    }
+
+    /// Jumps straight to onboarding's character-picker page. Settings'
+    /// "Change Character" box reuses the exact same screen rather than
+    /// building a separate picker UI, then closes normally once done.
+    private func showCharacterPicker() {
+        let controller = OnboardingWindowController(
+            startPage: OnboardingView.characterPageIndex,
+            title: "Choose Your Character",
+            finalButtonLabel: "DONE"
+        ) { [weak self] in
             self?.onboardingController?.close()
             self?.onboardingController = nil
         }
@@ -50,7 +72,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             rootView: SettingsView(
                 postureSource: postureSource,
                 subscriptionManager: subscriptionManager,
-                onShowOnboarding: { [weak self] in self?.showOnboarding() }
+                onShowOnboarding: { [weak self] in self?.showOnboarding() },
+                onChangeCharacter: { [weak self] in self?.showCharacterPicker() }
             )
         )
         self.popover = popover

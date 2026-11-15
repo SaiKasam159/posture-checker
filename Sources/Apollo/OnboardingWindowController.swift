@@ -2,7 +2,12 @@ import AppKit
 import SwiftUI
 
 final class OnboardingWindowController: NSWindowController {
-    convenience init(onFinish: @escaping () -> Void) {
+    convenience init(
+        startPage: Int = 0,
+        title: String = "Welcome to Apollo",
+        finalButtonLabel: String = "GET STARTED",
+        onFinish: @escaping () -> Void
+    ) {
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 500, height: 580),
             styleMask: [.titled, .closable],
@@ -10,10 +15,12 @@ final class OnboardingWindowController: NSWindowController {
             defer: false
         )
         window.center()
-        window.title = "Welcome to Apollo"
+        window.title = title
         window.isReleasedWhenClosed = false
         window.appearance = NSAppearance(named: .darkAqua)
-        window.contentView = NSHostingView(rootView: OnboardingView(onFinish: onFinish))
+        window.contentView = NSHostingView(
+            rootView: OnboardingView(startPage: startPage, finalButtonLabel: finalButtonLabel, onFinish: onFinish)
+        )
 
         self.init(window: window)
     }

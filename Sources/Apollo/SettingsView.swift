@@ -13,6 +13,7 @@ struct SettingsView: View {
     @State private var showPaywall = false
 
     var onShowOnboarding: () -> Void = {}
+    var onChangeCharacter: () -> Void = {}
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -87,7 +88,23 @@ struct SettingsView: View {
                 Text("CHARACTER")
                     .font(Theme.pixelFont(9))
                     .foregroundStyle(Theme.textSecondary)
-                CharacterPickerView(selectedID: $selectedCharacterID, maxHeight: 180)
+                Button {
+                    onChangeCharacter()
+                } label: {
+                    HStack {
+                        Text(CharacterCatalog.option(for: selectedCharacterID).preview)
+                            .font(.system(size: 22))
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(CharacterCatalog.option(for: selectedCharacterID).name.uppercased())
+                                .font(Theme.pixelFont(10))
+                            Text("CHANGE CHARACTER")
+                                .font(Theme.pixelFont(8, weight: .regular))
+                                .foregroundStyle(Theme.textSecondary)
+                        }
+                        Spacer()
+                    }
+                }
+                .buttonStyle(PixelButtonStyle(fill: Theme.surface, textColor: Theme.textPrimary))
             }
 
             Divider().background(Theme.divider)
@@ -102,12 +119,10 @@ struct SettingsView: View {
             .buttonStyle(PixelButtonStyle(fill: Theme.surface, textColor: Theme.textPrimary))
             .help("Resets your \"good posture\" baseline to how you're sitting right now.")
 
-            Button("Show Welcome Guide Again") {
+            Button("SHOW ONBOARDING AGAIN") {
                 onShowOnboarding()
             }
-            .buttonStyle(.plain)
-            .font(Theme.pixelFont(9, weight: .regular))
-            .foregroundStyle(Theme.textSecondary)
+            .buttonStyle(PixelButtonStyle(fill: Theme.surface, textColor: Theme.textPrimary))
 
             Divider().background(Theme.divider)
 
