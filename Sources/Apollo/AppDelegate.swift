@@ -36,7 +36,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func setUpStatusItem() {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        item.button?.image = NSImage(systemSymbolName: "sun.max.fill", accessibilityDescription: "Apollo")
+        item.button?.image = NSImage(systemSymbolName: "figure.stand", accessibilityDescription: "Apollo")
         item.button?.action = #selector(togglePopover)
         item.button?.target = self
         statusItem = item
