@@ -7,7 +7,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var popover: NSPopover?
     private var overlayController: OverlayWindowController?
     private var onboardingController: OnboardingWindowController?
-    private var postureSource = MockPostureSource()
+    // The real backend. Swap back to `MockPostureSource()` here (and update
+    // the two concrete types below) for pure UI iteration without a camera.
+    private var postureSource = PostureMonitor()
     private var subscriptionManager: SubscriptionManager!
     private var cancellable: AnyCancellable?
 
@@ -19,7 +21,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         subscriptionManager = SubscriptionManager()
         setUpStatusItem()
         setUpOverlay()
-        postureSource.start()
+        // PostureMonitor starts its camera itself, in init().
 
         if !UserDefaults.standard.bool(forKey: hasCompletedOnboardingKey) {
             showOnboarding()
@@ -97,9 +99,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 }
 
-/// Bridges the mock posture publisher into the SwiftUI character view.
+/// Bridges the posture publisher into the SwiftUI character view.
 private struct CharacterOverlayHostView: View {
-    @ObservedObject var postureSource: MockPostureSource
+    @ObservedObject var postureSource: PostureMonitor
     @State private var state: PostureState = .good
 
     var body: some View {

@@ -33,7 +33,7 @@ struct CharacterOverlayView: View {
             .offset(x: xOffset)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
-        .onChange(of: state) { newState in
+        .onChange(of: state) { _, newState in
             update(for: newState)
         }
         .onAppear {

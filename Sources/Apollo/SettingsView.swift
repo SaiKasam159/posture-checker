@@ -1,14 +1,10 @@
 import SwiftUI
 import StoreKit
-import AVFoundation
 
 struct SettingsView: View {
-    @ObservedObject var postureSource: MockPostureSource
+    @ObservedObject var postureSource: PostureMonitor
     @ObservedObject var subscriptionManager: SubscriptionManager
 
-    @State private var availableCameras: [AVCaptureDevice] = []
-    @State private var selectedCameraID: String = UserDefaults.standard.string(forKey: CameraCatalog.selectedCameraIDKey) ?? ""
-    @State private var cameraAuthorized = false
     @AppStorage("selectedCharacterID") private var selectedCharacterID = CharacterCatalog.defaultID
     @State private var showPaywall = false
 
@@ -21,7 +17,7 @@ struct SettingsView: View {
                 .font(Theme.pixelFont(14))
                 .foregroundStyle(Theme.textPrimary)
 
-            if !cameraAuthorized {
+            if postureSource.camera.authorization != .authorized {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("CAMERA ACCESS NEEDED")
                         .font(Theme.pixelFont(11))
@@ -30,11 +26,10 @@ struct SettingsView: View {
                         .font(Theme.pixelFont(9, weight: .regular))
                         .foregroundStyle(Theme.textSecondary)
                     Button("GRANT ACCESS") {
-                        CameraPermission.request { granted in
-                            cameraAuthorized = granted
-                            if !granted {
-                                CameraPermission.openSystemSettings()
-                            }
+                        if postureSource.camera.authorization == .denied {
+                            CameraPermission.openSystemSettings()
+                        } else {
+                            postureSource.camera.start()
                         }
                     }
                     .buttonStyle(PixelButtonStyle())
@@ -46,41 +41,43 @@ struct SettingsView: View {
                 Text("CAMERA")
                     .font(Theme.pixelFont(9))
                     .foregroundStyle(Theme.textSecondary)
-                if availableCameras.isEmpty {
+                if postureSource.camera.devices.isEmpty {
                     Text("No camera detected")
                         .font(Theme.pixelFont(9, weight: .regular))
                         .foregroundStyle(Theme.textSecondary)
                 } else {
-                    Picker("", selection: $selectedCameraID) {
-                        ForEach(availableCameras, id: \.uniqueID) { device in
-                            Text(device.localizedName).tag(device.uniqueID)
+                    Picker("", selection: cameraSelection) {
+                        ForEach(postureSource.camera.devices) { device in
+                            Text(device.name).tag(device.id)
                         }
                     }
                     .labelsHidden()
-                    .onChange(of: selectedCameraID) { newValue in
-                        UserDefaults.standard.set(newValue, forKey: CameraCatalog.selectedCameraIDKey)
-                    }
                 }
             }
 
             VStack(alignment: .leading, spacing: 4) {
-                Text("SENSITIVITY — ALERT AFTER \(Int(postureSource.slouchThresholdSeconds))S SLOUCHED")
+                Text("SENSITIVITY")
                     .font(Theme.pixelFont(9))
                     .foregroundStyle(Theme.textSecondary)
-                Slider(
-                    value: $postureSource.slouchThresholdSeconds,
-                    in: 3...30,
-                    step: 1
-                )
-                .tint(Theme.accent)
+                Text("Higher reacts to smaller slouches. Lower is more forgiving.")
+                    .font(Theme.pixelFont(8, weight: .regular))
+                    .foregroundStyle(Theme.textSecondary)
+                Slider(value: $postureSource.sensitivity, in: 0.25...4, step: 0.25)
+                    .tint(Theme.accent)
             }
 
-            Toggle("PAUSE MONITORING", isOn: $postureSource.isPaused)
-                .toggleStyle(.switch)
-                .tint(Theme.accent)
-                .font(Theme.pixelFont(10))
-                .foregroundStyle(Theme.textPrimary)
-                .help("Temporarily stops watching without quitting the app.")
+            Toggle(
+                "PAUSE MONITORING",
+                isOn: Binding(
+                    get: { postureSource.isPaused },
+                    set: { postureSource.setPaused($0) }
+                )
+            )
+            .toggleStyle(.switch)
+            .tint(Theme.accent)
+            .font(Theme.pixelFont(10))
+            .foregroundStyle(Theme.textPrimary)
+            .help("Temporarily stops watching without quitting the app.")
 
             Divider().background(Theme.divider)
 
@@ -113,11 +110,17 @@ struct SettingsView: View {
 
             Divider().background(Theme.divider)
 
-            Button("RECALIBRATE") {
-                // Hook up to backend calibration routine once available.
+            VStack(alignment: .leading, spacing: 6) {
+                Button("RECALIBRATE") {
+                    postureSource.startCalibration()
+                }
+                .buttonStyle(PixelButtonStyle(fill: Theme.surface, textColor: Theme.textPrimary))
+                .help("Resets your \"good posture\" baseline to how you're sitting right now.")
+
+                Text(postureSource.statusText)
+                    .font(Theme.pixelFont(8, weight: .regular))
+                    .foregroundStyle(Theme.textSecondary)
             }
-            .buttonStyle(PixelButtonStyle(fill: Theme.surface, textColor: Theme.textPrimary))
-            .help("Resets your \"good posture\" baseline to how you're sitting right now.")
 
             Button("SHOW ONBOARDING AGAIN") {
                 onShowOnboarding()
@@ -135,18 +138,16 @@ struct SettingsView: View {
         .frame(width: 300)
         .background(Theme.background)
         .preferredColorScheme(.dark)
-        .onAppear {
-            CameraPermission.request { granted in
-                cameraAuthorized = granted
-            }
-            availableCameras = CameraCatalog.availableCameras()
-            if selectedCameraID.isEmpty || !availableCameras.contains(where: { $0.uniqueID == selectedCameraID }) {
-                selectedCameraID = availableCameras.first?.uniqueID ?? ""
-            }
-        }
         .sheet(isPresented: $showPaywall) {
             PaywallView(subscriptionManager: subscriptionManager)
         }
+    }
+
+    private var cameraSelection: Binding<String> {
+        Binding(
+            get: { postureSource.camera.selectedDeviceID ?? "" },
+            set: { postureSource.camera.select(deviceID: $0) }
+        )
     }
 
     @ViewBuilder
@@ -183,5 +184,5 @@ struct SettingsView: View {
 }
 
 #Preview {
-    SettingsView(postureSource: MockPostureSource(), subscriptionManager: SubscriptionManager())
+    SettingsView(postureSource: PostureMonitor(), subscriptionManager: SubscriptionManager())
 }
