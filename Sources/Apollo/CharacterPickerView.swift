@@ -28,19 +28,20 @@ private struct CharacterTile: View {
                 .font(.system(size: 40))
             Text(option.name)
                 .font(.caption.bold())
+                .foregroundStyle(Theme.textPrimary)
                 .multilineTextAlignment(.center)
             Text(option.blurb)
                 .font(.caption2)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.textSecondary)
                 .multilineTextAlignment(.center)
                 .lineLimit(2)
         }
         .padding(10)
         .frame(width: 104, height: 110)
-        .background(isSelected ? Color.accentColor.opacity(0.15) : Color.gray.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
+        .background(isSelected ? Theme.surfaceSelected : Theme.surface, in: RoundedRectangle(cornerRadius: 10))
         .overlay(
             RoundedRectangle(cornerRadius: 10)
-                .stroke(isSelected ? Color.accentColor : .clear, lineWidth: 2)
+                .stroke(isSelected ? Theme.textPrimary : .clear, lineWidth: 2)
         )
     }
 }

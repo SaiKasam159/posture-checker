@@ -36,13 +36,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func setUpStatusItem() {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        item.button?.image = NSImage(systemSymbolName: "figure.seated.side", accessibilityDescription: "Posture Checker")
+        item.button?.image = NSImage(systemSymbolName: "sun.max.fill", accessibilityDescription: "Apollo")
         item.button?.action = #selector(togglePopover)
         item.button?.target = self
         statusItem = item
 
         let popover = NSPopover()
         popover.behavior = .transient
+        popover.appearance = NSAppearance(named: .darkAqua)
         popover.contentViewController = NSHostingController(
             rootView: SettingsView(onShowOnboarding: { [weak self] in self?.showOnboarding() })
         )

@@ -2,12 +2,12 @@
 import PackageDescription
 
 let package = Package(
-    name: "PostureChecker",
+    name: "Apollo",
     platforms: [.macOS(.v13)],
     targets: [
         .executableTarget(
-            name: "PostureChecker",
-            path: "Sources/PostureChecker"
+            name: "Apollo",
+            path: "Sources/Apollo"
         )
     ]
 )

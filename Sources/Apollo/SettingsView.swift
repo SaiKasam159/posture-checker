@@ -12,16 +12,18 @@ struct SettingsView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Posture Checker")
+            Text("Apollo")
                 .font(.headline)
+                .foregroundStyle(Theme.textPrimary)
 
             if !cameraAuthorized {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Camera access needed")
                         .font(.subheadline.bold())
-                    Text("Posture Checker watches your webcam locally to detect slouching. Video never leaves your device.")
+                        .foregroundStyle(Theme.textPrimary)
+                    Text("Apollo watches your webcam locally to detect slouching. Video never leaves your device.")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.textSecondary)
                     Button("Grant Camera Access") {
                         CameraPermission.request { granted in
                             cameraAuthorized = granted
@@ -30,14 +32,15 @@ struct SettingsView: View {
                             }
                         }
                     }
+                    .tint(Theme.accent)
                 }
-                Divider()
+                Divider().background(Theme.divider)
             }
 
             VStack(alignment: .leading, spacing: 4) {
                 Text("Camera")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.textSecondary)
                 Picker("", selection: $selectedCamera) {
                     ForEach(cameras, id: \.self) { Text($0) }
                 }
@@ -47,42 +50,49 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Sensitivity — alert after \(Int(sensitivity))s slouched")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.textSecondary)
                 Slider(value: $sensitivity, in: 3...30, step: 1)
+                    .tint(Theme.accent)
             }
 
             Toggle("Pause monitoring", isOn: $isPaused)
+                .tint(Theme.accent)
+                .foregroundStyle(Theme.textPrimary)
                 .help("Temporarily stops watching without quitting the app.")
 
-            Divider()
+            Divider().background(Theme.divider)
 
             VStack(alignment: .leading, spacing: 6) {
                 Text("Character")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.textSecondary)
                 CharacterPickerView(selectedID: $selectedCharacterID)
             }
 
-            Divider()
+            Divider().background(Theme.divider)
 
             Button("Recalibrate") {
                 // Hook up to backend calibration routine once available.
             }
+            .foregroundStyle(Theme.textPrimary)
             .help("Resets your \"good posture\" baseline to how you're sitting right now.")
 
             Button("Show Welcome Guide Again") {
                 onShowOnboarding()
             }
+            .foregroundStyle(Theme.textPrimary)
 
-            Divider()
+            Divider().background(Theme.divider)
 
-            Button("Quit Posture Checker") {
+            Button("Quit Apollo") {
                 NSApp.terminate(nil)
             }
             .foregroundStyle(.red)
         }
         .padding(16)
         .frame(width: 300)
+        .background(Theme.background)
+        .preferredColorScheme(.dark)
         .onAppear {
             CameraPermission.request { granted in
                 cameraAuthorized = granted
