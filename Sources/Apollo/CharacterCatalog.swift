@@ -12,10 +12,10 @@ struct CharacterOption: Identifiable, Equatable {
 
 enum CharacterCatalog {
     static let all: [CharacterOption] = [
-        CharacterOption(id: "sam", name: "Slouch Sam", blurb: "The default. Chill until you're not.", preview: "🙂"),
-        CharacterOption(id: "cat", name: "Lazy Cat", blurb: "Judges your posture silently.", preview: "🐱"),
-        CharacterOption(id: "robot", name: "Posture Bot", blurb: "Beeps disapprovingly.", preview: "🤖"),
-        CharacterOption(id: "ghost", name: "Grumpy Ghost", blurb: "Haunts your slouch.", preview: "👻"),
+        CharacterOption(id: "sam", name: "Slouch Sam", blurb: "Easygoing until you give him a reason not to be.", preview: "🙂"),
+        CharacterOption(id: "cat", name: "Lazy Cat", blurb: "Says nothing. Judges everything.", preview: "🐱"),
+        CharacterOption(id: "robot", name: "Posture Bot", blurb: "Built to notice. Doesn't let it go.", preview: "🤖"),
+        CharacterOption(id: "ghost", name: "Grumpy Ghost", blurb: "Haunts the slouch, not the room.", preview: "👻"),
     ]
 
     static let defaultID = "sam"
