@@ -44,11 +44,55 @@ Like Granola: it runs in the background and stays out of the way.
 3. User corrects their posture: the character walks away.
 4. User stays slouched: the character yells and the screen flashes red.
 
+## Running it
+
+Needs Xcode 16 or later and macOS 14 or later.
+
+1. Open `PostureChecker.xcodeproj` and press Run. There is no Dock icon; look for the icon in the menu bar.
+2. Allow camera access. This is the only permission the app asks for.
+3. Click the menu bar icon, sit up straight at arm's length from the screen, and press **Calibrate**.
+
+The logic tests run without a camera: `cd PostureCore && swift test`.
+
+## How detection works
+
+Each camera keeps its own calibration, so everything is judged against how *you* sit in front of *that* camera.
+
+**Slouching** is any of these moving too far from the calibrated position:
+
+- the shoulder line tilting (leaning to one side)
+- the head sinking toward the shoulders (hunching forward)
+- the head dropping in the frame (sliding down in the chair)
+
+Only the face is required. If the shoulders are hidden (a hoodie, a tight camera angle), the first two checks are skipped and the app tracks the head alone.
+
+**Too close** is the face appearing about 1.3 times wider than at calibration, which is roughly a quarter closer to the screen.
+
+**Moving the laptop** recalibrates automatically. The app keeps a small picture of the background with the person blanked out. If most of that background changes and then holds still for 2 seconds, the camera has moved, so it relearns the user's position and says so. A person moving, a TV, or the lights changing don't count, because they change only part of the background or only its brightness. It can't tell against a blank wall, and it assumes the user is sitting normally right after the move. Manual recalibration is always there. This logic is in `SceneChange.swift`.
+
+Neither fires straight away. Slouching must last 8 seconds before the warning and a further 12 before the alarm. Being too close must last 15 seconds before the warning and a further 15 before the alarm, so leaning in to read something is ignored. Two seconds back in a good position clears either one.
+
+All these numbers are first guesses and need tuning on real setups. They live in `PostureCore/Sources/PostureCore/Assessment.swift` (how far) and `SustainedTracker.swift` (how long).
+
+## Code layout
+
+- `PostureCore/` holds the posture logic as a Swift package with no camera code, so it can be unit tested.
+- `PostureChecker/` is the app: camera (`CameraManager`), landmark detection (`PoseDetector`) and `PostureMonitor`, which ties them together.
+- `PostureChecker/DebugPanelView.swift` is a plain test panel, there to be replaced by the real UI.
+
+### For the UI and characters
+
+Everything the UI needs is published by `PostureMonitor`:
+
+- `slouchLevel` and `distanceLevel` are each `.ok`, `.warning` or `.alarm`. `.warning` means the character walks on, `.alarm` means it yells, and back to `.ok` means it walks away.
+- `assessment.slouchReason` says what kind of slouch it is, if the characters should react differently.
+- `personPresent`, `isCalibrated`, `calibration` and `statusText` cover the remaining states.
+
 ## Build order
 
-1. Menu bar app skeleton with camera picker and live preview.
-2. Posture detection with calibration and a slouch score.
-3. Slouch timer and the overlay layer, with a placeholder character.
+1. ~~Menu bar app skeleton with camera picker and live preview.~~ Done.
+2. ~~Posture detection with calibration and a slouch score.~~ Built, needs tuning on real setups.
+3. The overlay layer, with a placeholder character. (The slouch timer is done.)
 4. Real character art and animation, then the yell and red flash.
 5. Onboarding.
 
