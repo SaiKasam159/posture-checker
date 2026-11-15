@@ -12,6 +12,10 @@ struct OnboardingView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            progressBar
+                .padding(.horizontal, 28)
+                .padding(.top, 20)
+
             TabView(selection: $page) {
                 welcomePage.tag(0)
                 whyItMattersPage.tag(1)
@@ -23,13 +27,12 @@ struct OnboardingView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             HStack {
-                pageDots
-                Spacer()
                 if page > 0 {
                     Button("Back") { page -= 1 }
                         .buttonStyle(.plain)
                         .foregroundStyle(Theme.textSecondary)
                 }
+                Spacer()
                 Button(page == pageCount - 1 ? "Get Started" : "Next") {
                     if page == pageCount - 1 {
                         onFinish()
@@ -50,14 +53,25 @@ struct OnboardingView: View {
         .preferredColorScheme(.dark)
     }
 
-    private var pageDots: some View {
-        HStack(spacing: 6) {
-            ForEach(0..<pageCount, id: \.self) { index in
-                Circle()
-                    .fill(index == page ? Theme.textPrimary : Theme.divider)
-                    .frame(width: 6, height: 6)
+    private var progressFraction: CGFloat {
+        CGFloat(page + 1) / CGFloat(pageCount)
+    }
+
+    private var progressBar: some View {
+        GeometryReader { geo in
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(Theme.divider)
+
+                Capsule()
+                    .fill(Theme.textPrimary)
+                    .frame(width: geo.size.width * progressFraction)
+                    .shadow(color: Theme.textPrimary.opacity(0.9), radius: 6)
+                    .shadow(color: Theme.textPrimary.opacity(0.5), radius: 12)
             }
         }
+        .frame(height: 5)
+        .animation(.easeInOut(duration: 0.4), value: page)
     }
 
     private var welcomePage: some View {
