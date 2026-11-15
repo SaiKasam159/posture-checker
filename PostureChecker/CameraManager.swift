@@ -114,6 +114,11 @@ final class CameraManager: NSObject, ObservableObject {
                 session.inputs.forEach(session.removeInput)
                 if session.canAddInput(input) { session.addInput(input) }
                 if session.outputs.isEmpty, session.canAddOutput(output) { session.addOutput(output) }
+                // Ask for frames with a separate brightness layer, which the camera-move check reads.
+                let wanted = kCVPixelFormatType_420YpCbCr8BiPlanarFullRange
+                if output.availableVideoPixelFormatTypes.contains(wanted) {
+                    output.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String: wanted]
+                }
                 // Small frames are plenty for finding shoulders and a face.
                 if session.canSetSessionPreset(.vga640x480) { session.sessionPreset = .vga640x480 }
                 session.commitConfiguration()

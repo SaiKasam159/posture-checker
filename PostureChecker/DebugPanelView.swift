@@ -72,12 +72,19 @@ struct DebugPanelView: View {
                     func place(_ p: PostureCore.Point) -> CGPoint {
                         CGPoint(x: (1 - p.x / monitor.frameAspect) * size.width, y: (1 - p.y) * size.height)
                     }
-                    let a = place(sample.shoulderA), b = place(sample.shoulderB)
-                    var line = Path()
-                    line.move(to: a)
-                    line.addLine(to: b)
-                    context.stroke(line, with: .color(statusColor == .primary ? .green : statusColor), lineWidth: 3)
-                    for p in [a, b] + (sample.head.map { [place($0)] } ?? []) {
+                    var dots: [CGPoint] = []
+                    if let shoulders = sample.shoulders {
+                        let a = place(shoulders.a), b = place(shoulders.b)
+                        var line = Path()
+                        line.move(to: a)
+                        line.addLine(to: b)
+                        context.stroke(line, with: .color(statusColor == .primary ? .green : statusColor), lineWidth: 3)
+                        dots += [a, b]
+                    }
+                    if let face = sample.face {
+                        dots.append(place(face.center))
+                    }
+                    for p in dots {
                         let dot = CGRect(x: p.x - 4, y: p.y - 4, width: 8, height: 8)
                         context.fill(Path(ellipseIn: dot), with: .color(.white))
                     }
@@ -98,7 +105,11 @@ struct DebugPanelView: View {
                 }
                 .tint(a.isSlouching ? .orange : .green)
 
-                Text("Shoulder tilt \(a.shoulderTiltChangeDegrees, specifier: "%+.1f")° from your calibrated position")
+                if let tilt = a.shoulderTiltChangeDegrees {
+                    Text("Shoulder tilt \(tilt, specifier: "%+.1f")° from your calibrated position")
+                } else {
+                    Text("Shoulders hidden, tracking your head only")
+                }
                 if let ratio = a.closenessRatio {
                     Text("Face \(ratio, specifier: "%.2f")x calibrated size\(a.estimatedDistanceCm.map { ", roughly \(Int($0)) cm away" } ?? "")")
                 } else {

@@ -6,8 +6,8 @@ public struct Thresholds: Equatable, Sendable {
     public var shoulderTiltDegrees = 8.0
     /// Head-to-shoulder height shrinking by this fraction of the baseline.
     public var neckCompression = 0.18
-    /// Head dropping in the frame by this many baseline shoulder widths.
-    public var headDrop = 0.20
+    /// Head dropping in the frame by this many face widths. Half a face is roughly 7 to 8 cm.
+    public var headDrop = 0.5
     /// Face appearing this many times wider than at calibration. 1.3 is roughly a quarter closer.
     public var closenessRatio = 1.3
 
@@ -42,28 +42,36 @@ public struct Assessment: Equatable, Sendable {
     public var isTooClose: Bool
     /// Rough distance from the camera. See `DistanceEstimator` for how rough.
     public var estimatedDistanceCm: Double?
-    public var shoulderTiltChangeDegrees: Double
+    /// Nil when shoulders are hidden now or were hidden at calibration.
+    public var shoulderTiltChangeDegrees: Double?
 
+    /// Compares whatever is visible now against whatever was visible at calibration.
+    /// With shoulders hidden it falls back to the head alone.
     public static func assess(_ m: PostureMetrics, against b: Baseline, thresholds t: Thresholds) -> Assessment {
-        let tiltChange = m.shoulderTiltDegrees - b.shoulderTiltDegrees
-        var worst = (reason: SlouchReason.shouldersTilted, score: abs(tiltChange) / t.shoulderTiltDegrees)
-
-        if let neck = m.neckRatio, b.neckRatio > 0 {
-            let score = ((b.neckRatio - neck) / b.neckRatio) / t.neckCompression
-            if score > worst.score { worst = (.headSunk, score) }
+        var worst = (reason: SlouchReason.headDropped, score: 0.0)
+        func consider(_ reason: SlouchReason, _ score: Double) {
+            if score > worst.score { worst = (reason, score) }
         }
-        if let headY = m.headY, b.shoulderWidth > 0 {
-            let score = ((b.headY - headY) / b.shoulderWidth) / t.headDrop
-            if score > worst.score { worst = (.headDropped, score) }
+
+        var tiltChange: Double?
+        if let tilt = m.shoulderTiltDegrees, let baseTilt = b.shoulderTiltDegrees {
+            tiltChange = tilt - baseTilt
+            consider(.shouldersTilted, abs(tilt - baseTilt) / t.shoulderTiltDegrees)
+        }
+        if let neck = m.neckRatio, let baseNeck = b.neckRatio, baseNeck > 0 {
+            consider(.headSunk, ((baseNeck - neck) / baseNeck) / t.neckCompression)
+        }
+        if let headY = m.headY, b.faceWidth > 0 {
+            consider(.headDropped, ((b.headY - headY) / b.faceWidth) / t.headDrop)
         }
 
         var closeness: Double?
-        if let face = m.faceWidthFraction, b.faceWidthFraction > 0 {
-            closeness = face / b.faceWidthFraction
+        if let width = m.faceWidth, b.faceWidth > 0 {
+            closeness = width / b.faceWidth
         }
 
         return Assessment(
-            slouchScore: max(0, worst.score),
+            slouchScore: worst.score,
             slouchReason: worst.reason,
             closenessRatio: closeness,
             isTooClose: (closeness ?? 0) >= t.closenessRatio,

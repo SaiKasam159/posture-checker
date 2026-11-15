@@ -82,18 +82,18 @@ public final class PostureEngine {
     private func smooth(_ new: PostureMetrics) -> PostureMetrics {
         guard let old = smoothed else { return new }
         let a = smoothing
-        func blend(_ o: Double, _ n: Double) -> Double { o + a * (n - o) }
+        // A value that just reappeared (shoulders back in view) starts fresh.
         func blend(_ o: Double?, _ n: Double?) -> Double? {
             guard let n else { return nil }
             guard let o else { return n }
-            return blend(o, n)
+            return o + a * (n - o)
         }
         return PostureMetrics(
-            shoulderTiltDegrees: blend(old.shoulderTiltDegrees, new.shoulderTiltDegrees),
-            shoulderWidth: blend(old.shoulderWidth, new.shoulderWidth),
-            neckRatio: blend(old.neckRatio, new.neckRatio),
             headY: blend(old.headY, new.headY),
-            faceWidthFraction: blend(old.faceWidthFraction, new.faceWidthFraction)
+            faceWidth: blend(old.faceWidth, new.faceWidth),
+            faceWidthFraction: blend(old.faceWidthFraction, new.faceWidthFraction),
+            shoulderTiltDegrees: blend(old.shoulderTiltDegrees, new.shoulderTiltDegrees),
+            neckRatio: blend(old.neckRatio, new.neckRatio)
         )
     }
 }

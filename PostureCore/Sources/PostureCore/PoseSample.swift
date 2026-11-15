@@ -12,64 +12,92 @@ public struct Point: Equatable, Codable, Sendable {
     }
 }
 
-/// The landmarks found in one camera frame.
-public struct PoseSample: Equatable, Sendable {
-    public var shoulderA: Point
-    public var shoulderB: Point
-    /// Nose, or the midpoint of the ears when the nose isn't visible.
-    public var head: Point?
-    /// Width of the face box as a fraction of the frame width. Bigger means closer to the camera.
-    public var faceWidthFraction: Double?
+public struct Face: Equatable, Sendable {
+    public var center: Point
+    /// Width of the face box, in the same unit as `Point`.
+    public var width: Double
 
-    public init(shoulderA: Point, shoulderB: Point, head: Point? = nil, faceWidthFraction: Double? = nil) {
-        self.shoulderA = shoulderA
-        self.shoulderB = shoulderB
-        self.head = head
-        self.faceWidthFraction = faceWidthFraction
+    public init(center: Point, width: Double) {
+        self.center = center
+        self.width = width
+    }
+}
+
+public struct Shoulders: Equatable, Sendable {
+    public var a: Point
+    public var b: Point
+
+    public init(a: Point, b: Point) {
+        self.a = a
+        self.b = b
+    }
+}
+
+/// What was found in one camera frame. Either part can be missing:
+/// a hoodie or a tight camera angle hides shoulders, a turned head hides the face.
+public struct PoseSample: Equatable, Sendable {
+    public var face: Face?
+    public var shoulders: Shoulders?
+    /// Frame width divided by height.
+    public var frameAspect: Double
+
+    public init(face: Face?, shoulders: Shoulders?, frameAspect: Double) {
+        self.face = face
+        self.shoulders = shoulders
+        self.frameAspect = frameAspect
     }
 }
 
 /// The numbers we judge posture on, derived from one `PoseSample`.
+/// The head numbers need a face, the shoulder numbers need shoulders, and `neckRatio` needs both.
 public struct PostureMetrics: Equatable, Sendable {
+    public var headY: Double?
+    public var faceWidth: Double?
+    /// Face width as a fraction of the frame width. Used for the rough distance estimate.
+    public var faceWidthFraction: Double?
     /// Angle of the shoulder line against horizontal. 0 means level.
-    public var shoulderTiltDegrees: Double
-    public var shoulderWidth: Double
+    public var shoulderTiltDegrees: Double?
     /// Height of the head above the shoulder line, divided by shoulder width.
     /// It shrinks when the head sinks toward the shoulders.
     public var neckRatio: Double?
-    public var headY: Double?
-    public var faceWidthFraction: Double?
 
     public init(
-        shoulderTiltDegrees: Double,
-        shoulderWidth: Double,
-        neckRatio: Double? = nil,
         headY: Double? = nil,
-        faceWidthFraction: Double? = nil
+        faceWidth: Double? = nil,
+        faceWidthFraction: Double? = nil,
+        shoulderTiltDegrees: Double? = nil,
+        neckRatio: Double? = nil
     ) {
-        self.shoulderTiltDegrees = shoulderTiltDegrees
-        self.shoulderWidth = shoulderWidth
-        self.neckRatio = neckRatio
         self.headY = headY
+        self.faceWidth = faceWidth
         self.faceWidthFraction = faceWidthFraction
+        self.shoulderTiltDegrees = shoulderTiltDegrees
+        self.neckRatio = neckRatio
     }
 
-    /// Returns nil when the two shoulders sit on the same spot, which means the detection is junk.
+    /// Returns nil when the frame has neither a face nor usable shoulders.
     public init?(sample: PoseSample) {
-        // Order by x so the result doesn't depend on which shoulder is which, or on mirroring.
-        let (left, right) = sample.shoulderA.x <= sample.shoulderB.x
-            ? (sample.shoulderA, sample.shoulderB)
-            : (sample.shoulderB, sample.shoulderA)
-        let dx = right.x - left.x
-        let dy = right.y - left.y
-        let width = (dx * dx + dy * dy).squareRoot()
-        guard width > 1e-6 else { return nil }
+        if let face = sample.face, face.width > 0 {
+            headY = face.center.y
+            faceWidth = face.width
+            faceWidthFraction = sample.frameAspect > 0 ? face.width / sample.frameAspect : nil
+        }
 
-        let midY = (left.y + right.y) / 2
-        self.shoulderTiltDegrees = atan2(dy, dx) * 180 / .pi
-        self.shoulderWidth = width
-        self.neckRatio = sample.head.map { ($0.y - midY) / width }
-        self.headY = sample.head?.y
-        self.faceWidthFraction = sample.faceWidthFraction
+        if let s = sample.shoulders {
+            // Order by x so the result doesn't depend on which shoulder is which, or on mirroring.
+            let (left, right) = s.a.x <= s.b.x ? (s.a, s.b) : (s.b, s.a)
+            let dx = right.x - left.x
+            let dy = right.y - left.y
+            let width = (dx * dx + dy * dy).squareRoot()
+            // Two shoulders on the same spot means the detection is junk.
+            if width > 1e-6 {
+                shoulderTiltDegrees = atan2(dy, dx) * 180 / .pi
+                if let headY {
+                    neckRatio = (headY - (left.y + right.y) / 2) / width
+                }
+            }
+        }
+
+        if headY == nil && shoulderTiltDegrees == nil { return nil }
     }
 }

@@ -20,15 +20,18 @@ final class PostureMonitor: ObservableObject {
     @Published private(set) var distanceLevel: AlertLevel = .ok
     @Published private(set) var personPresent = false
     @Published private(set) var assessment: Assessment?
-    @Published private(set) var detectionIssue: DetectionIssue?
     /// The latest landmarks, for drawing over the preview.
     @Published private(set) var lastSample: PoseSample?
     @Published private(set) var frameAspect = 4.0 / 3.0
 
     @Published private(set) var isCalibrated = false
     @Published private(set) var calibration: CalibrationState = .idle
-    /// Set after calibrating if the user seems to be sitting very close to the camera.
+    /// True when the current calibration was started by the app after the camera moved.
+    @Published private(set) var calibrationIsAutomatic = false
+    /// Something the user should know about the last calibration.
     @Published private(set) var calibrationNote: String?
+    /// True for a few seconds while the view is changing. Alerts are held back meanwhile.
+    @Published private(set) var cameraMoving = false
 
     @Published private(set) var isPaused = false
     @Published var sensitivity: Double {
@@ -40,6 +43,7 @@ final class PostureMonitor: ObservableObject {
 
     private let engine = PostureEngine()
     private let detector = PoseDetector()
+    private var moveDetector = CameraMoveDetector()
     private var calibrationSamples: [PostureMetrics] = []
     private var calibrationDeadline: TimeInterval = 0
     private var cancellables: Set<AnyCancellable> = []
@@ -55,7 +59,8 @@ final class PostureMonitor: ObservableObject {
 
         camera.onFrame = { [weak self, detector] buffer in
             let detection = detector.detect(in: buffer)
-            DispatchQueue.main.async { self?.handle(detection) }
+            let scene = SceneSampler.signature(from: buffer, person: detection.person)
+            DispatchQueue.main.async { self?.handle(detection, scene: scene) }
         }
         // Each camera sees the user from a different place, so each keeps its own calibration.
         camera.$selectedDeviceID
@@ -73,9 +78,15 @@ final class PostureMonitor: ObservableObject {
     // MARK: Controls
 
     func startCalibration() {
+        beginCalibration(automatic: false)
+    }
+
+    private func beginCalibration(automatic: Bool) {
         calibrationSamples = []
         calibrationNote = nil
-        calibrationDeadline = ProcessInfo.processInfo.systemUptime + Self.calibrationTimeout
+        calibrationIsAutomatic = automatic
+        // After a camera move we wait as long as it takes for the user to be back in view.
+        calibrationDeadline = automatic ? .infinity : ProcessInfo.processInfo.systemUptime + Self.calibrationTimeout
         calibration = .collecting(progress: 0)
     }
 
@@ -84,13 +95,13 @@ final class PostureMonitor: ObservableObject {
         if paused {
             camera.stop()
             engine.resetTracking()
+            moveDetector.reset()
             calibration = .idle
-            slouchLevel = .ok
-            distanceLevel = .ok
+            cameraMoving = false
             personPresent = false
             assessment = nil
             lastSample = nil
-            detectionIssue = nil
+            clearAlerts()
         } else {
             camera.start()
         }
@@ -98,23 +109,48 @@ final class PostureMonitor: ObservableObject {
 
     // MARK: Frames
 
-    private func handle(_ detection: Detection) {
+    private var isCollecting: Bool {
+        if case .collecting = calibration { return true }
+        return false
+    }
+
+    private func handle(_ detection: Detection, scene: SceneSignature?) {
         guard !isPaused else { return }
         let now = ProcessInfo.processInfo.systemUptime
 
         frameAspect = detection.aspect
         lastSample = detection.sample
-        detectionIssue = detection.issue
+        personPresent = detection.sample != nil
 
-        if case .collecting = calibration {
+        if let scene {
+            let movedAndSettled = moveDetector.update(scene, at: now)
+            if movedAndSettled, isCalibrated, !isCollecting {
+                beginCalibration(automatic: true)
+            }
+            cameraMoving = moveDetector.isSuspended(at: now)
+        }
+
+        if isCollecting {
             collectCalibrationFrame(detection, now: now)
         }
 
+        // The old calibration means nothing while the view is changing or being relearned.
+        if cameraMoving || isCollecting {
+            engine.resetTracking()
+            assessment = nil
+            clearAlerts()
+            return
+        }
+
         let output = engine.ingest(detection.sample, at: now)
-        personPresent = output.personPresent
         assessment = output.assessment
         slouchLevel = output.slouchLevel
         distanceLevel = output.distanceLevel
+    }
+
+    private func clearAlerts() {
+        slouchLevel = .ok
+        distanceLevel = .ok
     }
 
     private func collectCalibrationFrame(_ detection: Detection, now: TimeInterval) {
@@ -127,20 +163,24 @@ final class PostureMonitor: ObservableObject {
             isCalibrated = true
             calibration = .idle
             saveBaseline(baseline)
+            // A manual calibration is also the user telling us this view is the right one.
+            if !calibrationIsAutomatic { moveDetector.reset() }
+
+            var notes: [String] = []
+            if calibrationIsAutomatic {
+                notes.append("The camera moved, so I recalibrated to your new position. Press Recalibrate if you weren't sitting well.")
+            }
+            if baseline.shoulderTiltDegrees == nil {
+                notes.append("Your shoulders aren't visible, so I'm tracking your head only.")
+            }
             if let cm = DistanceEstimator.estimateCm(faceWidthFraction: baseline.faceWidthFraction),
                cm < DistanceEstimator.comfortableMinimumCm {
-                calibrationNote = "You look close to the camera (roughly \(Int(cm)) cm). If the camera is on your screen, sit at arm's length and recalibrate."
+                notes.append("You look close to the camera (roughly \(Int(cm)) cm). If the camera is on your screen, sit at arm's length and recalibrate.")
             }
+            calibrationNote = notes.isEmpty ? nil : notes.joined(separator: " ")
         } else if now > calibrationDeadline {
-            let reason: String
-            if let issue = detection.issue {
-                reason = issue.message
-            } else if detection.sample?.head == nil {
-                reason = "Can't see your head"
-            } else {
-                reason = "Can't see your face clearly"
-            }
-            calibration = .failed("\(reason). Move so your head and both shoulders are in view, then try again.")
+            let reason = detection.sample == nil ? "Can't see anyone" : "Can't see your face clearly"
+            calibration = .failed("\(reason). Move so your face is in view, then try again.")
         } else {
             calibration = .collecting(progress: Double(calibrationSamples.count) / Double(Self.calibrationFrames))
         }
@@ -148,7 +188,7 @@ final class PostureMonitor: ObservableObject {
 
     // MARK: Saved calibration
 
-    private func baselineKey(_ cameraID: String) -> String { "baseline.\(cameraID)" }
+    private func baselineKey(_ cameraID: String) -> String { "baseline.v2.\(cameraID)" }
 
     private func loadBaseline(forCamera id: String?) {
         var baseline: Baseline?
@@ -156,11 +196,12 @@ final class PostureMonitor: ObservableObject {
             baseline = try? JSONDecoder().decode(Baseline.self, from: data)
         }
         engine.baseline = baseline
+        moveDetector.reset()
         isCalibrated = baseline != nil
         calibration = .idle
         calibrationNote = nil
-        slouchLevel = .ok
-        distanceLevel = .ok
+        cameraMoving = false
+        clearAlerts()
     }
 
     private func saveBaseline(_ baseline: Baseline) {
@@ -188,8 +229,11 @@ final class PostureMonitor: ObservableObject {
         default: return "Camera access is off"
         }
         if camera.devices.isEmpty { return "No camera found" }
-        if case .collecting = calibration { return "Calibrating. Hold still." }
-        if let detectionIssue { return detectionIssue.message }
+        if isCollecting {
+            return calibrationIsAutomatic ? "Camera moved. Recalibrating, sit normally." : "Calibrating. Hold still."
+        }
+        if cameraMoving { return "Camera is moving" }
+        if !personPresent { return "Can't see anyone" }
         if !isCalibrated { return "Not calibrated yet" }
 
         var problems: [String] = []

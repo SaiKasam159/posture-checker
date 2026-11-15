@@ -3,57 +3,54 @@ import Foundation
 /// The user's own "sitting well" position, captured during calibration.
 /// Everything is judged relative to this, so the camera can be at any angle.
 public struct Baseline: Equatable, Codable, Sendable {
-    public var shoulderTiltDegrees: Double
-    public var shoulderWidth: Double
-    public var neckRatio: Double
     public var headY: Double
+    public var faceWidth: Double
     public var faceWidthFraction: Double
+    /// Nil when the shoulders weren't visible during calibration. The head checks still work without them.
+    public var shoulderTiltDegrees: Double?
+    public var neckRatio: Double?
 
     public init(
-        shoulderTiltDegrees: Double,
-        shoulderWidth: Double,
-        neckRatio: Double,
         headY: Double,
-        faceWidthFraction: Double
+        faceWidth: Double,
+        faceWidthFraction: Double,
+        shoulderTiltDegrees: Double? = nil,
+        neckRatio: Double? = nil
     ) {
-        self.shoulderTiltDegrees = shoulderTiltDegrees
-        self.shoulderWidth = shoulderWidth
-        self.neckRatio = neckRatio
         self.headY = headY
+        self.faceWidth = faceWidth
         self.faceWidthFraction = faceWidthFraction
+        self.shoulderTiltDegrees = shoulderTiltDegrees
+        self.neckRatio = neckRatio
     }
 
     public static let minimumSamples = 4
 
     /// Averages the frames collected during calibration.
-    /// Frames missing the head or face are skipped. Returns nil if too few usable frames remain.
+    /// Frames without a face are skipped. Returns nil if too few usable frames remain.
+    /// The shoulder numbers are only kept if shoulders showed up in at least half of those frames.
     public static func average(of metrics: [PostureMetrics]) -> Baseline? {
-        var tilt = 0.0, width = 0.0, neck = 0.0, headY = 0.0, face = 0.0
-        var count = 0.0
-        for m in metrics {
-            guard let n = m.neckRatio, let h = m.headY, let f = m.faceWidthFraction, n > 0, f > 0 else { continue }
-            tilt += m.shoulderTiltDegrees
-            width += m.shoulderWidth
-            neck += n
-            headY += h
-            face += f
-            count += 1
+        let usable = metrics.filter(\.isUsableForCalibration)
+        guard usable.count >= minimumSamples else { return nil }
+        let count = Double(usable.count)
+
+        func mean(_ values: [Double]) -> Double? {
+            values.count * 2 >= usable.count ? values.reduce(0, +) / Double(values.count) : nil
         }
-        guard Int(count) >= minimumSamples else { return nil }
         return Baseline(
-            shoulderTiltDegrees: tilt / count,
-            shoulderWidth: width / count,
-            neckRatio: neck / count,
-            headY: headY / count,
-            faceWidthFraction: face / count
+            headY: usable.compactMap(\.headY).reduce(0, +) / count,
+            faceWidth: usable.compactMap(\.faceWidth).reduce(0, +) / count,
+            faceWidthFraction: usable.compactMap(\.faceWidthFraction).reduce(0, +) / count,
+            shoulderTiltDegrees: mean(usable.compactMap(\.shoulderTiltDegrees)),
+            neckRatio: mean(usable.compactMap(\.neckRatio).filter { $0 > 0 })
         )
     }
 }
 
 public extension PostureMetrics {
-    /// True when the frame has everything calibration needs.
+    /// True when the frame has the face, which is all calibration strictly needs.
     var isUsableForCalibration: Bool {
-        guard let n = neckRatio, let f = faceWidthFraction, headY != nil else { return false }
-        return n > 0 && f > 0
+        guard headY != nil, let w = faceWidth, let f = faceWidthFraction else { return false }
+        return w > 0 && f > 0
     }
 }

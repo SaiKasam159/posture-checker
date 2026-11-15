@@ -64,7 +64,11 @@ Each camera keeps its own calibration, so everything is judged against how *you*
 - the head sinking toward the shoulders (hunching forward)
 - the head dropping in the frame (sliding down in the chair)
 
+Only the face is required. If the shoulders are hidden (a hoodie, a tight camera angle), the first two checks are skipped and the app tracks the head alone.
+
 **Too close** is the face appearing about 1.3 times wider than at calibration, which is roughly a quarter closer to the screen.
+
+**Moving the laptop** recalibrates automatically. The app keeps a small picture of the background with the person blanked out. If most of that background changes and then holds still for 2 seconds, the camera has moved, so it relearns the user's position and says so. A person moving, a TV, or the lights changing don't count, because they change only part of the background or only its brightness. It can't tell against a blank wall, and it assumes the user is sitting normally right after the move. Manual recalibration is always there. This logic is in `SceneChange.swift`.
 
 Neither fires straight away. Slouching must last 8 seconds before the warning and a further 12 before the alarm. Being too close must last 15 seconds before the warning and a further 15 before the alarm, so leaning in to read something is ignored. Two seconds back in a good position clears either one.
 
