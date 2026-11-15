@@ -1,4 +1,5 @@
 import SwiftUI
+import StoreKit
 
 struct SettingsView: View {
     @State private var selectedCamera = "Built-in Camera"
@@ -6,6 +7,9 @@ struct SettingsView: View {
     @State private var isPaused = false
     @State private var cameraAuthorized = false
     @AppStorage("selectedCharacterID") private var selectedCharacterID = CharacterCatalog.defaultID
+
+    @ObservedObject var subscriptionManager: SubscriptionManager
+    @State private var showPaywall = false
 
     let cameras = ["Built-in Camera", "External Monitor Camera"]
     var onShowOnboarding: () -> Void = {}
@@ -71,6 +75,10 @@ struct SettingsView: View {
 
             Divider().background(Theme.divider)
 
+            subscriptionSection
+
+            Divider().background(Theme.divider)
+
             Button("Recalibrate") {
                 // Hook up to backend calibration routine once available.
             }
@@ -98,9 +106,46 @@ struct SettingsView: View {
                 cameraAuthorized = granted
             }
         }
+        .sheet(isPresented: $showPaywall) {
+            PaywallView(subscriptionManager: subscriptionManager)
+        }
+    }
+
+    @ViewBuilder
+    private var subscriptionSection: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Subscription")
+                .font(.caption)
+                .foregroundStyle(Theme.textSecondary)
+
+            if subscriptionManager.isSubscribed {
+                HStack {
+                    Circle().fill(.green).frame(width: 6, height: 6)
+                    Text("Apollo Premium active")
+                        .font(.subheadline)
+                        .foregroundStyle(Theme.textPrimary)
+                }
+                // Apple's own subscriptions page handles cancellation, plan
+                // changes, and billing problems. We never build any of that.
+                Button("Manage Subscription") {
+                    SubscriptionManager.openManageSubscriptions()
+                }
+                .foregroundStyle(Theme.textPrimary)
+            } else {
+                Text("Not subscribed")
+                    .font(.subheadline)
+                    .foregroundStyle(Theme.textSecondary)
+                Button("Subscribe") {
+                    showPaywall = true
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(Theme.accent)
+                .foregroundStyle(.black)
+            }
+        }
     }
 }
 
 #Preview {
-    SettingsView()
+    SettingsView(subscriptionManager: SubscriptionManager())
 }

@@ -8,6 +8,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var overlayController: OverlayWindowController?
     private var onboardingController: OnboardingWindowController?
     private var postureSource = MockPostureSource()
+    private var subscriptionManager: SubscriptionManager!
     private var cancellable: AnyCancellable?
 
     private let hasCompletedOnboardingKey = "hasCompletedOnboarding"
@@ -15,6 +16,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory) // no Dock icon, menu bar only
 
+        subscriptionManager = SubscriptionManager()
         setUpStatusItem()
         setUpOverlay()
         postureSource.start()
@@ -45,7 +47,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         popover.behavior = .transient
         popover.appearance = NSAppearance(named: .darkAqua)
         popover.contentViewController = NSHostingController(
-            rootView: SettingsView(onShowOnboarding: { [weak self] in self?.showOnboarding() })
+            rootView: SettingsView(
+                subscriptionManager: subscriptionManager,
+                onShowOnboarding: { [weak self] in self?.showOnboarding() }
+            )
         )
         self.popover = popover
     }

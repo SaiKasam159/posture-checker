@@ -26,7 +26,10 @@ Sources/Apollo/
   CharacterOverlayView.swift  # the character, walk-on/walk-off/yell/red-flash logic
   OverlayWindowController.swift # transparent, click-through, full-screen overlay NSWindow
   CameraPermission.swift      # AVCaptureDevice permission request/redirect helper
+  SubscriptionManager.swift   # StoreKit 2 entitlement/purchase/restore, no backend
+  PaywallView.swift           # subscribe sheet shown from settings
 scripts/run.sh                 # builds and launches as a real .app bundle
+Resources/Apollo.storekit      # local StoreKit test config (see Subscription section)
 ```
 
 ### How to run
@@ -64,6 +67,23 @@ Strictly **black / grey / white** — no blue system accent anywhere. Defined ce
   No audio yet — hook up `AVAudioPlayer` here when character "yells" is designed.
 - **Posture state source** (`PostureState.swift`): `PostureState` enum (`.good`, `.slouching(seconds:)`, `.alert`) and a `PostureSource` protocol (`statePublisher: AnyPublisher<PostureState, Never>`). `MockPostureSource` cycles through the states once a second (good → slouching, ramping up to 10s → alert → back to good) purely so the UI can be built and demoed before the backend exists. **Swap `MockPostureSource` for the real posture-detection backend by making it conform to `PostureSource` and wiring it in in `AppDelegate.setUpOverlay()`** — that's the entire integration point between UI and backend.
 - **Camera permission** (`CameraPermission.swift`): wraps `AVCaptureDevice.requestAccess(for: .video)`, and on denial opens System Settings' Camera privacy pane directly. Requested from `SettingsView.onAppear`. The UI only requests/surfaces this; actual camera capture is the backend's responsibility.
+
+### Subscription (StoreKit 2, no backend)
+
+Mac-only, so this is entirely native: Apple ties entitlement to the user's Apple ID, no account system or database of ours involved.
+
+- **`SubscriptionManager.swift`** (`@MainActor`, `ObservableObject`): owns everything.
+  - `Self.productID = "com.apollo.posture.monthly"` — must match a subscription product created in App Store Connect (for real shipping) or the local `Resources/Apollo.storekit` config (for development testing).
+  - `isSubscribed` is derived purely from `Transaction.currentEntitlements` — this *is* the entire "is the user subscribed" check, no server round-trip.
+  - `purchase()` drives Apple's native purchase sheet via `Product.purchase()`.
+  - `restore()` calls `AppStore.sync()` for "I subscribed on another device" / "let me double-check" cases.
+  - Listens to `Transaction.updates` continuously so renewals/cancellations/refunds update `isSubscribed` live.
+  - Owned by `AppDelegate` (created inside `applicationDidFinishLaunching`, not as a stored-property initializer, to dodge a `@MainActor` initializer-isolation build error) and passed into `SettingsView`.
+- **`PaywallView.swift`**: sheet shown from settings' "Subscribe" button. Shows price (from the real `Product`, not hardcoded), a Subscribe CTA, and Restore Purchases.
+- **Settings subscription section**: status row (green dot + "Apollo Premium active", or "Not subscribed"), and either a "Subscribe" button (opens the paywall) or a "Manage Subscription" button.
+  - **"Manage Subscription" does not open a sheet we build.** SwiftUI's `.manageSubscriptionsSheet(isPresented:)` modifier is iOS-only and fails to compile on macOS. On macOS the standard pattern is `SubscriptionManager.openManageSubscriptions()`, which just opens `https://apps.apple.com/account/subscriptions` in the browser. Apple's own page handles cancellation, plan changes, and billing problems entirely. **This is the answer to "is there even a need to manage it": barely.** We only need to surface status and link out; we never build cancel/upgrade/billing UI ourselves.
+- **`Resources/Apollo.storekit`**: a local StoreKit configuration file so purchases can be tested without App Store Connect set up yet. To use it, open the package in Xcode, edit the run scheme's Options tab, and set "StoreKit Configuration" to this file — then `purchase()` runs against sandboxed fake transactions. Without this wired up (e.g. running via `scripts/run.sh`), `Product.products(for:)` will return nothing and the paywall will show "Subscription unavailable right now," which is expected until either the scheme is configured or a real product exists in App Store Connect.
+- Nothing is gated behind the subscription yet (no feature currently checks `isSubscribed`) — this is infrastructure only, ready for whichever feature ends up being the paid one.
 
 ### Known gaps / next steps for UI
 
