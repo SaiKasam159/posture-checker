@@ -64,7 +64,7 @@ struct OnboardingView: View {
         OnboardingPage(
             icon: "sun.max.fill",
             title: "Apollo",
-            body: "Named for the god of good physique, Apollo is the thing standing between you and another three-hour slouch you won't remember starting. It stays invisible until you need it — then it walks right onto your screen and makes you deal with it."
+            body: "Named for the god of good physique, Apollo is the thing standing between you and another three-hour slouch you won't remember starting. It stays invisible until you need it. Then it walks right onto your screen and makes you deal with it."
         )
     }
 
@@ -74,13 +74,13 @@ struct OnboardingView: View {
             title: "Why it matters",
             customBody: {
                 VStack(alignment: .leading, spacing: 14) {
-                    Text("You know the feeling. Hour two of studying, your spine's given up, your eyes are glazed, and you can't remember the last three paragraphs you read. That's not just you being tired — your posture is part of it.")
+                    Text("You know the feeling. Hour two of studying, your spine's given up, your eyes are glazed, and you can't remember the last three paragraphs you read. That's not just you being tired. Your posture is part of it.")
                         .font(.body)
                         .foregroundStyle(Theme.textPrimary)
 
-                    ProofLine(text: "Research links upright sitting to better mood and lower fatigue than slouched sitting — and tired, flat mood is exactly what kills a study session.")
+                    ProofLine(text: "Research links upright sitting to better mood and lower fatigue than slouched sitting, and tired, flat mood is exactly what kills a study session.")
                     ProofLine(text: "Studies on posture and memory have found slouched positions change how easily people recall what they just took in, compared to sitting upright.")
-                    ProofLine(text: "This isn't a miracle cure — the science on posture and raw focus is still mixed. But stacking small physical wins (sitting up, catching the slump before it becomes an hour) is one of the few study habits that costs you nothing to try.")
+                    ProofLine(text: "This isn't a miracle cure. The science on posture and raw focus is still mixed. But stacking small physical wins, like sitting up and catching the slump before it becomes an hour, is one of the few study habits that costs you nothing to try.")
 
                     Text("Apollo's job is to catch the slouch before it becomes the whole afternoon.")
                         .font(.subheadline.bold())
@@ -95,7 +95,7 @@ struct OnboardingView: View {
         OnboardingPage(
             icon: "camera.fill",
             title: "How it works",
-            body: "Your webcam tracks your head and shoulders to score your posture — processed entirely on your device, nothing is ever recorded or sent anywhere. You'll calibrate once against how you actually sit, at whatever angle your camera sees you."
+            body: "Your webcam tracks your head and shoulders to score your posture. Everything is processed entirely on your device, and nothing is ever recorded or sent anywhere. You'll calibrate once against how you actually sit, at whatever angle your camera sees you."
         )
     }
 
@@ -105,7 +105,7 @@ struct OnboardingView: View {
             title: "The controls",
             customBody: {
                 VStack(alignment: .leading, spacing: 14) {
-                    ControlExplainer(title: "Menu bar icon", detail: "Click it any time to open settings. No Dock icon, no main window — it just lives up there.")
+                    ControlExplainer(title: "Menu bar icon", detail: "Click it any time to open settings. No Dock icon, no main window. It just lives up there.")
                     ControlExplainer(title: "Recalibrate", detail: "Resets your \"good posture\" baseline to how you're sitting right now. Use it if you change chairs, camera angle, or setup.")
                     ControlExplainer(title: "Sensitivity", detail: "How many seconds of slouching before the character shows up. Lower = quicker alerts.")
                     ControlExplainer(title: "Pause", detail: "Temporarily stops watching without quitting the app.")
