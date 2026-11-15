@@ -48,6 +48,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         popover.appearance = NSAppearance(named: .darkAqua)
         popover.contentViewController = NSHostingController(
             rootView: SettingsView(
+                postureSource: postureSource,
                 subscriptionManager: subscriptionManager,
                 onShowOnboarding: { [weak self] in self?.showOnboarding() }
             )

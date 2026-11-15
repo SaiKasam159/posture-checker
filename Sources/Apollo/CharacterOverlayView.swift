@@ -20,11 +20,12 @@ struct CharacterOverlayView: View {
 
             VStack(spacing: 6) {
                 if case .alert = state {
-                    Text("sit up!")
-                        .font(.caption.bold())
+                    Text("SIT UP!")
+                        .font(Theme.pixelFont(11))
                         .padding(.horizontal, 10)
                         .padding(.vertical, 4)
-                        .background(.black.opacity(0.75), in: Capsule())
+                        .background(Color.black.opacity(0.85))
+                        .overlay(Rectangle().strokeBorder(.white, lineWidth: 2))
                         .foregroundStyle(.white)
                 }
                 Text(CharacterCatalog.option(for: selectedCharacterID).preview)

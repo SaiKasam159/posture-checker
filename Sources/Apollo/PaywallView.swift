@@ -14,19 +14,19 @@ struct PaywallView: View {
                 .foregroundStyle(Theme.textPrimary)
                 .padding(.top, 28)
 
-            Text("Apollo Premium")
-                .font(.title2.bold())
+            Text("APOLLO PREMIUM")
+                .font(Theme.pixelFont(18))
                 .foregroundStyle(Theme.textPrimary)
 
             Text("Keep Apollo watching your posture, with every character and future feature included.")
-                .font(.callout)
+                .font(Theme.pixelFont(11, weight: .regular))
                 .foregroundStyle(Theme.textSecondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 32)
 
             if let product = subscriptionManager.product {
-                Text("\(product.displayPrice) / month")
-                    .font(.title3.bold())
+                Text("\(product.displayPrice) / MONTH")
+                    .font(Theme.pixelFont(15))
                     .foregroundStyle(Theme.textPrimary)
                     .padding(.top, 4)
             } else if subscriptionManager.isLoading {
@@ -34,17 +34,17 @@ struct PaywallView: View {
                     .padding(.top, 4)
             } else {
                 Text("Subscription unavailable right now.")
-                    .font(.caption)
+                    .font(Theme.pixelFont(10, weight: .regular))
                     .foregroundStyle(Theme.textSecondary)
             }
 
             if let error = subscriptionManager.lastErrorMessage {
                 Text(error)
-                    .font(.caption)
+                    .font(Theme.pixelFont(10, weight: .regular))
                     .foregroundStyle(.red)
             }
 
-            Button("Subscribe") {
+            Button("SUBSCRIBE") {
                 Task {
                     await subscriptionManager.purchase()
                     if subscriptionManager.isSubscribed {
@@ -52,9 +52,7 @@ struct PaywallView: View {
                     }
                 }
             }
-            .buttonStyle(.borderedProminent)
-            .tint(Theme.accent)
-            .foregroundStyle(.black)
+            .buttonStyle(PixelButtonStyle())
             .disabled(subscriptionManager.product == nil)
 
             Button("Restore Purchases") {
@@ -62,12 +60,12 @@ struct PaywallView: View {
             }
             .buttonStyle(.plain)
             .foregroundStyle(Theme.textSecondary)
-            .font(.caption)
+            .font(Theme.pixelFont(10, weight: .regular))
 
             Button("Not now") { dismiss() }
                 .buttonStyle(.plain)
                 .foregroundStyle(Theme.textSecondary)
-                .font(.caption)
+                .font(Theme.pixelFont(10, weight: .regular))
                 .padding(.bottom, 20)
         }
         .frame(width: 340)

@@ -28,12 +28,11 @@ struct OnboardingView: View {
 
             HStack {
                 if page > 0 {
-                    Button("Back") { page -= 1 }
-                        .buttonStyle(.plain)
-                        .foregroundStyle(Theme.textSecondary)
+                    Button("BACK") { page -= 1 }
+                        .buttonStyle(PixelButtonStyle(fill: Theme.surface, textColor: Theme.textPrimary))
                 }
                 Spacer()
-                Button(page == pageCount - 1 ? "Get Started" : "Next") {
+                Button(page == pageCount - 1 ? "GET STARTED" : "NEXT") {
                     if page == pageCount - 1 {
                         onFinish()
                     } else {
@@ -41,9 +40,7 @@ struct OnboardingView: View {
                     }
                 }
                 .keyboardShortcut(.defaultAction)
-                .buttonStyle(.borderedProminent)
-                .tint(Theme.accent)
-                .foregroundStyle(.black)
+                .buttonStyle(PixelButtonStyle())
             }
             .padding(20)
         }
@@ -60,17 +57,18 @@ struct OnboardingView: View {
     private var progressBar: some View {
         GeometryReader { geo in
             ZStack(alignment: .leading) {
-                Capsule()
-                    .fill(Theme.divider)
+                Rectangle()
+                    .fill(Theme.surface)
+                    .overlay(Rectangle().strokeBorder(Theme.divider, lineWidth: 1))
 
-                Capsule()
+                Rectangle()
                     .fill(Theme.textPrimary)
                     .frame(width: geo.size.width * progressFraction)
                     .shadow(color: Theme.textPrimary.opacity(0.9), radius: 6)
                     .shadow(color: Theme.textPrimary.opacity(0.5), radius: 12)
             }
         }
-        .frame(height: 5)
+        .frame(height: 6)
         .animation(.easeInOut(duration: 0.4), value: page)
     }
 
@@ -89,7 +87,7 @@ struct OnboardingView: View {
             customBody: {
                 VStack(alignment: .leading, spacing: 14) {
                     Text("You know the feeling. Hour two of studying, your spine's given up, your eyes are glazed, and you can't remember the last three paragraphs you read. That's not just you being tired. Your posture is part of it.")
-                        .font(.body)
+                        .font(Theme.pixelFont(13, weight: .regular))
                         .foregroundStyle(Theme.textPrimary)
 
                     ProofLine(text: "Research links upright sitting to better mood and lower fatigue than slouched sitting, and tired, flat mood is exactly what kills a study session.")
@@ -97,7 +95,7 @@ struct OnboardingView: View {
                     ProofLine(text: "This isn't a miracle cure. The science on posture and raw focus is still mixed. But stacking small physical wins, like sitting up and catching the slump before it becomes an hour, is one of the few study habits that costs you nothing to try.")
 
                     Text("Apollo's job is to catch the slouch before it becomes the whole afternoon.")
-                        .font(.subheadline.bold())
+                        .font(Theme.pixelFont(13))
                         .foregroundStyle(Theme.textPrimary)
                         .padding(.top, 4)
                 }
@@ -135,17 +133,17 @@ struct OnboardingView: View {
                 Image(systemName: "person.crop.square")
                     .font(.largeTitle)
                     .foregroundStyle(Theme.textSecondary)
-                Text("Pick your character")
-                    .font(.title2.bold())
+                Text("PICK YOUR CHARACTER")
+                    .font(Theme.pixelFont(18))
                     .foregroundStyle(Theme.textPrimary)
                 Text("This is who shows up when you slouch. Change it anytime from settings.")
-                    .font(.subheadline)
+                    .font(Theme.pixelFont(11, weight: .regular))
                     .foregroundStyle(Theme.textSecondary)
                     .multilineTextAlignment(.center)
             }
             .padding(.top, 24)
 
-            CharacterPickerView(selectedID: $selectedCharacterID)
+            CharacterPickerView(selectedID: $selectedCharacterID, maxHeight: 300)
                 .padding(.horizontal, 24)
 
             Spacer()
@@ -163,7 +161,7 @@ private struct ProofLine: View {
                 .frame(width: 5, height: 5)
                 .padding(.top, 6)
             Text(text)
-                .font(.callout)
+                .font(Theme.pixelFont(11, weight: .regular))
                 .foregroundStyle(Theme.textSecondary)
         }
     }
@@ -195,12 +193,12 @@ private struct OnboardingPage<CustomBody: View>: View {
                 .font(.system(size: 40))
                 .foregroundStyle(Theme.textPrimary)
                 .padding(.top, 32)
-            Text(title)
-                .font(.title2.bold())
+            Text(title.uppercased())
+                .font(Theme.pixelFont(20))
                 .foregroundStyle(Theme.textPrimary)
             if let body_ {
                 Text(body_)
-                    .font(.body)
+                    .font(Theme.pixelFont(13, weight: .regular))
                     .foregroundStyle(Theme.textSecondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 36)
@@ -220,8 +218,8 @@ private struct ControlExplainer: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(title).font(.subheadline.bold()).foregroundStyle(Theme.textPrimary)
-            Text(detail).font(.caption).foregroundStyle(Theme.textSecondary)
+            Text(title.uppercased()).font(Theme.pixelFont(12)).foregroundStyle(Theme.textPrimary)
+            Text(detail).font(Theme.pixelFont(10, weight: .regular)).foregroundStyle(Theme.textSecondary)
         }
     }
 }

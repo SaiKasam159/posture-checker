@@ -2,19 +2,25 @@ import SwiftUI
 
 /// Grid of selectable characters. Shared between onboarding and the
 /// settings popover so there's one place that defines "what does picking a
-/// character look like."
+/// character look like." 20 characters now, so this scrolls rather than
+/// growing the parent view unbounded.
 struct CharacterPickerView: View {
     @Binding var selectedID: String
+    var maxHeight: CGFloat = 240
 
-    private let columns = [GridItem(.adaptive(minimum: 100, maximum: 120), spacing: 12)]
+    private let columns = [GridItem(.adaptive(minimum: 96, maximum: 112), spacing: 10)]
 
     var body: some View {
-        LazyVGrid(columns: columns, spacing: 12) {
-            ForEach(CharacterCatalog.all) { option in
-                CharacterTile(option: option, isSelected: option.id == selectedID)
-                    .onTapGesture { selectedID = option.id }
+        ScrollView {
+            LazyVGrid(columns: columns, spacing: 10) {
+                ForEach(CharacterCatalog.all) { option in
+                    CharacterTile(option: option, isSelected: option.id == selectedID)
+                        .onTapGesture { selectedID = option.id }
+                }
             }
+            .padding(.vertical, 2)
         }
+        .frame(maxHeight: maxHeight)
     }
 }
 
@@ -23,30 +29,31 @@ private struct CharacterTile: View {
     let isSelected: Bool
 
     var body: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: 5) {
             Text(option.preview)
-                .font(.system(size: 40))
+                .font(.system(size: 34))
             Text(option.name)
-                .font(.caption.bold())
+                .font(Theme.pixelFont(9))
                 .foregroundStyle(Theme.textPrimary)
                 .multilineTextAlignment(.center)
+                .lineLimit(2)
             Text(option.blurb)
-                .font(.caption2)
+                .font(Theme.pixelFont(7, weight: .regular))
                 .foregroundStyle(Theme.textSecondary)
                 .multilineTextAlignment(.center)
                 .lineLimit(2)
         }
-        .padding(10)
-        .frame(width: 104, height: 110)
-        .background(isSelected ? Theme.surfaceSelected : Theme.surface, in: RoundedRectangle(cornerRadius: 10))
-        .overlay(
-            RoundedRectangle(cornerRadius: 10)
-                .stroke(isSelected ? Theme.textPrimary : .clear, lineWidth: 2)
+        .padding(8)
+        .frame(width: 100, height: 112)
+        .pixelPanel(
+            fill: isSelected ? Theme.surfaceSelected : Theme.surface,
+            border: isSelected ? Theme.textPrimary : Theme.divider
         )
     }
 }
 
 #Preview {
-    CharacterPickerView(selectedID: .constant("sam"))
+    CharacterPickerView(selectedID: .constant("apollo"))
         .padding()
+        .background(Theme.background)
 }

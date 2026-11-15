@@ -1,34 +1,34 @@
 import SwiftUI
 import StoreKit
+import AVFoundation
 
 struct SettingsView: View {
-    @State private var selectedCamera = "Built-in Camera"
-    @State private var sensitivity: Double = 10
-    @State private var isPaused = false
+    @ObservedObject var postureSource: MockPostureSource
+    @ObservedObject var subscriptionManager: SubscriptionManager
+
+    @State private var availableCameras: [AVCaptureDevice] = []
+    @State private var selectedCameraID: String = UserDefaults.standard.string(forKey: CameraCatalog.selectedCameraIDKey) ?? ""
     @State private var cameraAuthorized = false
     @AppStorage("selectedCharacterID") private var selectedCharacterID = CharacterCatalog.defaultID
-
-    @ObservedObject var subscriptionManager: SubscriptionManager
     @State private var showPaywall = false
 
-    let cameras = ["Built-in Camera", "External Monitor Camera"]
     var onShowOnboarding: () -> Void = {}
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Apollo")
-                .font(.headline)
+            Text("APOLLO")
+                .font(Theme.pixelFont(14))
                 .foregroundStyle(Theme.textPrimary)
 
             if !cameraAuthorized {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Camera access needed")
-                        .font(.subheadline.bold())
+                    Text("CAMERA ACCESS NEEDED")
+                        .font(Theme.pixelFont(11))
                         .foregroundStyle(Theme.textPrimary)
                     Text("Apollo watches your webcam locally to detect slouching. Video never leaves your device.")
-                        .font(.caption)
+                        .font(Theme.pixelFont(9, weight: .regular))
                         .foregroundStyle(Theme.textSecondary)
-                    Button("Grant Camera Access") {
+                    Button("GRANT ACCESS") {
                         CameraPermission.request { granted in
                             cameraAuthorized = granted
                             if !granted {
@@ -36,41 +36,58 @@ struct SettingsView: View {
                             }
                         }
                     }
-                    .tint(Theme.accent)
+                    .buttonStyle(PixelButtonStyle())
                 }
                 Divider().background(Theme.divider)
             }
 
             VStack(alignment: .leading, spacing: 4) {
-                Text("Camera")
-                    .font(.caption)
+                Text("CAMERA")
+                    .font(Theme.pixelFont(9))
                     .foregroundStyle(Theme.textSecondary)
-                Picker("", selection: $selectedCamera) {
-                    ForEach(cameras, id: \.self) { Text($0) }
+                if availableCameras.isEmpty {
+                    Text("No camera detected")
+                        .font(Theme.pixelFont(9, weight: .regular))
+                        .foregroundStyle(Theme.textSecondary)
+                } else {
+                    Picker("", selection: $selectedCameraID) {
+                        ForEach(availableCameras, id: \.uniqueID) { device in
+                            Text(device.localizedName).tag(device.uniqueID)
+                        }
+                    }
+                    .labelsHidden()
+                    .onChange(of: selectedCameraID) { newValue in
+                        UserDefaults.standard.set(newValue, forKey: CameraCatalog.selectedCameraIDKey)
+                    }
                 }
-                .labelsHidden()
             }
 
             VStack(alignment: .leading, spacing: 4) {
-                Text("Sensitivity — alert after \(Int(sensitivity))s slouched")
-                    .font(.caption)
+                Text("SENSITIVITY — ALERT AFTER \(Int(postureSource.slouchThresholdSeconds))S SLOUCHED")
+                    .font(Theme.pixelFont(9))
                     .foregroundStyle(Theme.textSecondary)
-                Slider(value: $sensitivity, in: 3...30, step: 1)
-                    .tint(Theme.accent)
+                Slider(
+                    value: $postureSource.slouchThresholdSeconds,
+                    in: 3...30,
+                    step: 1
+                )
+                .tint(Theme.accent)
             }
 
-            Toggle("Pause monitoring", isOn: $isPaused)
+            Toggle("PAUSE MONITORING", isOn: $postureSource.isPaused)
+                .toggleStyle(.switch)
                 .tint(Theme.accent)
+                .font(Theme.pixelFont(10))
                 .foregroundStyle(Theme.textPrimary)
                 .help("Temporarily stops watching without quitting the app.")
 
             Divider().background(Theme.divider)
 
             VStack(alignment: .leading, spacing: 6) {
-                Text("Character")
-                    .font(.caption)
+                Text("CHARACTER")
+                    .font(Theme.pixelFont(9))
                     .foregroundStyle(Theme.textSecondary)
-                CharacterPickerView(selectedID: $selectedCharacterID)
+                CharacterPickerView(selectedID: $selectedCharacterID, maxHeight: 180)
             }
 
             Divider().background(Theme.divider)
@@ -79,23 +96,25 @@ struct SettingsView: View {
 
             Divider().background(Theme.divider)
 
-            Button("Recalibrate") {
+            Button("RECALIBRATE") {
                 // Hook up to backend calibration routine once available.
             }
-            .foregroundStyle(Theme.textPrimary)
+            .buttonStyle(PixelButtonStyle(fill: Theme.surface, textColor: Theme.textPrimary))
             .help("Resets your \"good posture\" baseline to how you're sitting right now.")
 
             Button("Show Welcome Guide Again") {
                 onShowOnboarding()
             }
-            .foregroundStyle(Theme.textPrimary)
+            .buttonStyle(.plain)
+            .font(Theme.pixelFont(9, weight: .regular))
+            .foregroundStyle(Theme.textSecondary)
 
             Divider().background(Theme.divider)
 
-            Button("Quit Apollo") {
+            Button("QUIT APOLLO") {
                 NSApp.terminate(nil)
             }
-            .foregroundStyle(.red)
+            .buttonStyle(PixelButtonStyle(fill: Theme.surface, textColor: .red))
         }
         .padding(16)
         .frame(width: 300)
@@ -104,6 +123,10 @@ struct SettingsView: View {
         .onAppear {
             CameraPermission.request { granted in
                 cameraAuthorized = granted
+            }
+            availableCameras = CameraCatalog.availableCameras()
+            if selectedCameraID.isEmpty || !availableCameras.contains(where: { $0.uniqueID == selectedCameraID }) {
+                selectedCameraID = availableCameras.first?.uniqueID ?? ""
             }
         }
         .sheet(isPresented: $showPaywall) {
@@ -114,38 +137,36 @@ struct SettingsView: View {
     @ViewBuilder
     private var subscriptionSection: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Subscription")
-                .font(.caption)
+            Text("SUBSCRIPTION")
+                .font(Theme.pixelFont(9))
                 .foregroundStyle(Theme.textSecondary)
 
             if subscriptionManager.isSubscribed {
                 HStack {
                     Circle().fill(.green).frame(width: 6, height: 6)
                     Text("Apollo Premium active")
-                        .font(.subheadline)
+                        .font(Theme.pixelFont(10, weight: .regular))
                         .foregroundStyle(Theme.textPrimary)
                 }
                 // Apple's own subscriptions page handles cancellation, plan
                 // changes, and billing problems. We never build any of that.
-                Button("Manage Subscription") {
+                Button("MANAGE SUBSCRIPTION") {
                     SubscriptionManager.openManageSubscriptions()
                 }
-                .foregroundStyle(Theme.textPrimary)
+                .buttonStyle(PixelButtonStyle(fill: Theme.surface, textColor: Theme.textPrimary))
             } else {
                 Text("Not subscribed")
-                    .font(.subheadline)
+                    .font(Theme.pixelFont(10, weight: .regular))
                     .foregroundStyle(Theme.textSecondary)
-                Button("Subscribe") {
+                Button("SUBSCRIBE") {
                     showPaywall = true
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(Theme.accent)
-                .foregroundStyle(.black)
+                .buttonStyle(PixelButtonStyle())
             }
         }
     }
 }
 
 #Preview {
-    SettingsView(subscriptionManager: SubscriptionManager())
+    SettingsView(postureSource: MockPostureSource(), subscriptionManager: SubscriptionManager())
 }
